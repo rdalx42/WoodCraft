@@ -11,11 +11,13 @@ local tiles = {
     [7] = { name = "darkstone", image = nil, color = {0.25, 0.25, 0.25} },    -- charcoal
     [8] = { name = "dirt", image = nil, color = {0.35, 0.25, 0.1} },          -- brown earth
     [9] = { name = "snow", image = nil, color = {0.9, 0.9, 0.9} },            -- off-white
-    [10] = { name = "smallrock", image = nil, returntype = 6, color = {0.55, 0.55, 0.5}, hp = 10 } -- soft gray
+    [10] = { name = "smallrock", image = nil, returntype = 6, color = {0.55, 0.55, 0.5}, hp = 10} ,-- soft gray
+    [11] = {name = "treebottom", image = nil , returntype = 1, color = {0.55,0.55,0.5},hp=10},
+    [12] = {name = "treetop", image = nil , color = {0.55,0.55,0.5},returntype = 1},
 }
 
 
-local tiles_with_images = {10} 
+local tiles_with_images = {10,11,12} 
 
 function tiles.loadImages()
     for i, id in ipairs(tiles_with_images) do
