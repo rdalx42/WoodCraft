@@ -2,12 +2,12 @@
 local inventory = {
     maxdefaultslots = 30,
     defaultsize = 30,
-    inventory_arr = {}
-}
-
-item_info = {
-    [10] = {hp = 10},     
-    [11] = {hp=10}
+    inventory_arr = {},
+    items = {
+        [0] = {name = "Fist", dmg = 2},
+        [10] = {name = "Small Rock", dmg = 1},
+        [11] = {name = "Wood", dmg = 1},
+    }
 }
 
 inventory.__index = inventory
@@ -17,6 +17,7 @@ function inventory.new(slots, slot_size)
     self.maxslots = slots or inventory.maxdefaultslots
     self.slotsize = slot_size or inventory.defaultsize
     self.data = {}
+    self.selected_item = 0
 
     for i = 1, self.maxslots do
         self.data[i] = {id = -1, amount = 0, name = ""}
