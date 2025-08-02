@@ -2,9 +2,9 @@ local generator = require("map.generator")
 local tiles = require("data.tiles")
 
 local map = {
-    tile_sz = 5,
-    w = 1000,
-    h = 1000,
+    tile_sz = 10,
+    w = 2000,
+    h = 2000,
 }
 
 map.tile_size = map.tile_sz
@@ -21,6 +21,7 @@ function map.draw(self)
         for j = 1, self.width do
             local tile = self.data[i][j]
             local color = tiles[tile].color
+
             love.graphics.setColor(color)
             love.graphics.rectangle("fill", (j - 1) * self.tile_size, (i - 1) * self.tile_size, self.tile_size, self.tile_size)
         end
