@@ -7,6 +7,7 @@ local inventory = {
 
 item_info = {
     [10] = {hp = 10},     
+    [11] = {hp=10}
 }
 
 inventory.__index = inventory
