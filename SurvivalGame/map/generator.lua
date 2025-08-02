@@ -7,25 +7,15 @@ local generator = {
 
 local tile = require("data.tiles")
 local INVENTORY = require("player.inventory")
+local SPRITE = require("map.sprite_manager")
 
 local scale = 0.01
 local SHAKE_DURATION = 0.3
 local SHAKE_MAGNITUDE = 3
 
-local item_ids = {}
-for id in pairs(item_info) do
-    table.insert(item_ids, id)
-end
 
 local function key(x, y)
     return y .. "," .. x
-end
-
-local function is_item(tile_id)
-    for _, id in ipairs(item_ids) do
-        if tile_id == id then return true end
-    end
-    return false
 end
 
 function generator.generate(width, height, seed)
@@ -44,32 +34,13 @@ function generator.generate(width, height, seed)
         for x = 1, width do
             local n = love.math.noise((x + x_offset) * scale, (y + y_offset) * scale) + 0.1
             local selected_tile = tile.selection(n)
-
-            if selected_tile == 5 and love.math.random() < 0.1 then
-                selected_tile = 10
-                local k = key(x, y)
-                generator.item_table[k] = {
-                    x = x,
-                    y = y,
-                    item_type = selected_tile,
-                    hp = item_info[selected_tile].hp
-                }
-                map[y][x] = selected_tile
-            elseif selected_tile == 1 and y > 1 and love.math.random() < 0.05 then
-                selected_tile = 11
-                local k_base = key(x, y)
-                local k_top = key(x, y - 1)
-                generator.item_table[k_base] = {
-                    x = x,
-                    y = y,
-                    item_type = selected_tile,
-                    hp = item_info[selected_tile].hp,
-                    top = k_top
-                }
-                map[y][x] = selected_tile
-                map[y - 1][x] = 12
-            else
-                map[y][x] = selected_tile
+            map[y][x] = selected_tile
+            
+            for i=1,#SPRITE.existing_sprites do 
+                if SPRITE.can_spawn(x,y,tostring(SPRITE.existing_sprites[i]),selected_tile) == true then 
+                    SPRITE.load_sprite(x,y,SPRITE.existing_sprites[i])
+                    break
+                end
             end
         end
     end
@@ -78,76 +49,10 @@ function generator.generate(width, height, seed)
     return map
 end
 
-function generator.startShake(x, y)
-
-    local k = key(x, y)
-    local k2 = nil
-
-    generator.shake_timers[k] = SHAKE_DURATION
-    
-end
-
-function generator.updateShake(dt)
-    for k, timer in pairs(generator.shake_timers) do
-        timer = timer - dt
-        if timer <= 0 then
-            generator.shake_timers[k] = nil
-            generator.shake_offsets[k] = {x = 0, y = 0}
-        else
-            generator.shake_timers[k] = timer
-            generator.shake_offsets[k] = {
-                x = love.math.random(-SHAKE_MAGNITUDE, SHAKE_MAGNITUDE),
-                y = love.math.random(-SHAKE_MAGNITUDE, SHAKE_MAGNITUDE)
-            }
-        end
-    end
-end
-
 function generator.getShakeOffset(x, y)
     local k = key(x, y)
     return generator.shake_offsets[k] or {x = 0, y = 0}
 end
 
-function generator.destroyitem(map, x, y)
-    local k = key(x, y)
-    local item = generator.item_table[k]
-    local is_top = false
-
-    if not item then
-        local base_k = key(x, y + 1)
-        local base_item = generator.item_table[base_k]
-        if base_item and base_item.top == k then
-            k = base_k
-            item = base_item
-            is_top = true
-        end
-    end
-
-    if item then
-        item.hp = item.hp - 1
-        generator.startShake(item.x, item.y)
-
-        if item.top then
-            local tx, ty = item.x, item.y
-            generator.startShake(tx, ty)
-        end
-
-        if item.hp <= 0 then
-            inventory:add(item.item_type)
-            generator.item_table[k] = nil
-            generator.shake_timers[k] = nil
-            generator.shake_offsets[k] = nil
-
-            local return_tile = tile[item.item_type] and tile[item.item_type].returntype or 0
-            map[item.y][item.x] = return_tile
-            if item.top then
-                local tx, ty = item.x, item.y - 1
-                map[ty][tx] = tile[map[ty][tx]].returntype
-                generator.shake_timers[key(tx, ty)] = nil
-                generator.shake_offsets[key(tx, ty)] = nil
-            end
-        end
-    end
-end
 
 return generator
