@@ -49,10 +49,5 @@ function generator.generate(width, height, seed)
     return map
 end
 
-function generator.getShakeOffset(x, y)
-    local k = key(x, y)
-    return generator.shake_offsets[k] or {x = 0, y = 0}
-end
-
-
 return generator
+
