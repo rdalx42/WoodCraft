@@ -9,7 +9,7 @@ local tile = require("data.tiles")
 local INVENTORY = require("player.inventory")
 local SPRITE = require("map.sprite_manager")
 
-local scale = 0.01
+local scale = 0.005
 local SHAKE_DURATION = 0.3
 local SHAKE_MAGNITUDE = 3
 
@@ -49,5 +49,10 @@ function generator.generate(width, height, seed)
     return map
 end
 
-return generator
+function generator.getShakeOffset(x, y)
+    local k = key(x, y)
+    return generator.shake_offsets[k] or {x = 0, y = 0}
+end
 
+
+return generator
