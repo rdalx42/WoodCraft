@@ -1,6 +1,5 @@
 # survivalGameLove2D
 a WIP survival game.
 
-
-https://github.com/user-attachments/assets/cd11295e-b04b-40f7-9abd-259bf2e9255e
+https://github.com/user-attachments/assets/b13ae84b-74b6-456f-970d-8b2b40a6e886
 
