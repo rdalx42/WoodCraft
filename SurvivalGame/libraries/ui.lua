@@ -33,7 +33,19 @@ function UI.newFrame(name, x, y, width, height)
         image = nil,
     }
 
-    function frame:addButton(text, bx, by, bw, bh, onClick)
+    function frame:update(mx, my)
+        self.currentTooltip = nil
+        for _, el in ipairs(self.elements) do
+            el.hovered = mx >= el.x and mx <= el.x + el.width and
+                         my >= el.y and my <= el.y + el.height
+            if el.hovered and el.tooltip then
+                self.currentTooltip = el.tooltip
+            end
+        end
+    end
+
+
+    function frame:addButton(text, bx, by, bw, bh, onClick, tooltip)
         table.insert(self.elements, {
             type = "button",
             text = text,
@@ -42,11 +54,12 @@ function UI.newFrame(name, x, y, width, height)
             width = bw,
             height = bh,
             onClick = onClick,
-            hovered = false
+            hovered = false,
+            tooltip = tooltip or nil,
         })
     end
-
-    function frame:addImageButton(image, bx, by, bw, bh, onClick)
+    
+    function frame:addImageButton(image, bx, by, bw, bh, onClick, tooltip)
         table.insert(self.elements, {
             type = "imagebutton",
             image = image,
@@ -55,9 +68,10 @@ function UI.newFrame(name, x, y, width, height)
             width = bw,
             height = bh,
             onClick = onClick,
-            hovered = false
+            hovered = false,
+            tooltip = tooltip or nil,
         })
-    end
+    end    
 
     function frame:setImage(img)
         self.image = img
@@ -112,7 +126,7 @@ function UI.update(dt)
 end
 
 function UI.draw()
-    
+
     for _, frame in ipairs(UI.frames) do
         if frame.visible and frame.type ~= "imageframe" then
             frame:draw()
@@ -121,6 +135,25 @@ function UI.draw()
     for _, frame in ipairs(UI.frames) do
         if frame.visible and frame.type == "imageframe" then
             frame:draw()
+        end
+    end
+
+    local mx, my = love.mouse.getPosition()
+    for _, frame in ipairs(UI.frames) do
+        if frame.visible and frame.currentTooltip then
+            local padding = 5
+            local font = love.graphics.getFont()
+            local text = frame.currentTooltip
+            local textWidth = font:getWidth(text)
+            local textHeight = font:getHeight()
+            
+            local tooltipX = mx + 15
+            local tooltipY = my + 15
+
+            love.graphics.setColor(0, 0, 0, 0.8)
+            love.graphics.rectangle("fill", tooltipX - padding, tooltipY - padding, textWidth + 2*padding, textHeight + 2*padding)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.print(text, tooltipX, tooltipY)
         end
     end
 end
