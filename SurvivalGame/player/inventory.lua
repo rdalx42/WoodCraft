@@ -134,6 +134,9 @@ function inventory:draw()
     local cols = 10
     local spacing = 5
     local startX, startY = self.uiFrame.x + 130, self.uiFrame.y + 10
+    local mx, my = love.mouse.getPosition()
+
+    local hoveredSlot = nil
 
     for i = 1, self.maxslots do
         local col = (i - 1) % cols
@@ -142,7 +145,7 @@ function inventory:draw()
         local x = startX + col * (self.slotsize + spacing)
         local y = startY + row * (self.slotsize + spacing)
 
-        if not(i==1)then 
+        if not(i==1) then 
             love.graphics.setColor(0.2, 0.2, 0.2)
         else 
             love.graphics.setColor(1,0,0,.5)
@@ -163,7 +166,27 @@ function inventory:draw()
             love.graphics.setColor(1, 1, 0)
             love.graphics.rectangle("line", x - 2, y - 2, self.slotsize + 4, self.slotsize + 4)
         end
-        
+
+        if mx >= x and mx <= x + self.slotsize and my >= y and my <= y + self.slotsize then
+            hoveredSlot = slot
+        end
+    end
+
+    if hoveredSlot and hoveredSlot.id ~= -1 then
+        local item = inventory.items[hoveredSlot.id]
+        local tooltipText = item and item.bio or tostring("x" .. hoveredSlot.amount) 
+
+        local padding = 5
+        local font = love.graphics.getFont()
+        local textWidth = font:getWidth(tooltipText)
+        local textHeight = font:getHeight()
+        local tooltipX = mx + 15
+        local tooltipY = my + 15
+
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.rectangle("fill", tooltipX - padding, tooltipY - padding, textWidth + 2*padding, textHeight + 2*padding)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print(tooltipText, tooltipX, tooltipY)
     end
 end
 
