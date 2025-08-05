@@ -45,10 +45,10 @@ end
 
 
 function love.load()
-   
     MOVEMENT.set_player({x = 500, y = 500}, 500)
     cam = camera()
     SPRITE.wind_shader({"tree"})
+    SPRITE.hover_shader({"leaf"})
 end
 
 function love.update(dt)
@@ -61,17 +61,17 @@ function love.update(dt)
     if particle_system then
         particle_system:update(dt)
     end
-
 end
 
 function love.draw()
     cam:attach()
 
-    -- Draw only visible tiles for performance (example)
     local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
     local cam_x, cam_y = cam.x, cam.y
+
     local start_x = math.max(1, math.floor((cam_x - screen_w / 2) / TILE_SIZE))
     local end_x = math.min(#map[1], math.ceil((cam_x + screen_w / 2) / TILE_SIZE))
+
     local start_y = math.max(1, math.floor((cam_y - screen_h / 2) / TILE_SIZE))
     local end_y = math.min(#map, math.ceil((cam_y + screen_h / 2) / TILE_SIZE))
 
@@ -85,6 +85,7 @@ function love.draw()
                 offset_x = offset.x or 0
                 offset_y = offset.y or 0
             end
+            
             if tile_info then
                 if tile_info.image then
                     local baseScale = TILE_SIZE / tile_info.image:getWidth()
@@ -123,7 +124,6 @@ function love.draw()
     end
 
     SPRITE.draw_sprites()
-
     cam:detach()
 
     UI.draw()
@@ -135,10 +135,13 @@ function love.draw()
     end
 end
 
+
 function love.mousepressed(x, y, button)
     if button == 1 then
         local world_x, world_y = cam:worldCoords(x, y)
         SPRITE.click(world_x, world_y)
         inventory:mousepressed(x, y, button)
+    elseif button == 2 then
+        inventory:rightmousepressed(x, y, button)
     end
 end
