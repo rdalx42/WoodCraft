@@ -1,5 +1,3 @@
-local INVENTORY = require("player.inventory")
-
 local sprite_manager = {
     sprite_info = {
         ["smallrock"] = {
@@ -11,6 +9,11 @@ local sprite_manager = {
             spawninterval2 = 0.05,
             compatible = {1,3,5,9,8,4},
             height_multiplier = 1,
+            can_grab = false,
+            droppable_while_hit = 0,
+            droppable_while_hit_interval1 = 0,
+            droppable_while_hit_interval2 = 0.1,
+            hover_enabled=false,
         },
         ["tree"] = {
             hp = 4,
@@ -21,9 +24,31 @@ local sprite_manager = {
             spawninterval2 = 0.05,
             compatible = {1,3,9,11},
             height_multiplier = 2,
-        }
+            can_grab = false,
+            droppable_while_hit = 12,
+            droppable_while_hit_interval1 = 0,
+            droppable_while_hit_interval2 = 0.1,
+            hover_enabled=false,
+        },
+        ["leaf"] = {
+            hp = 0,
+            returntype = 12,
+            hitboxX = 30,
+            hitboxY = 39,
+            spawninterval1 = 0.0,
+            spawninterval2 = 0.0,
+            compatible = {1,3,9,11},
+            height_multiplier = 1,
+            can_grab = true,
+            droppable_while_hit = 0,
+            droppable_while_hit_interval1 = 0,
+            droppable_while_hit_interval2 = 0.1,
+            auto_pickup = true,
+            hover_enabled=true,
+        },
     },
-    existing_sprites = { "smallrock", "tree" },
+    
+    existing_sprites = { "smallrock", "tree", "leaf"},
     sprites = {},
     animation_time = 0.15
 }
@@ -39,6 +64,20 @@ function sprite_manager.wind_shader(names)
         end
     end
 end
+
+function sprite_manager.hover_shader(names)
+    for i = 1, #sprite_manager.sprites do
+        local child = sprite_manager.sprites[i]
+        for j = 1, #names do
+            if names[j] == child.name then
+                child.hover_enabled = true
+                child.hover_timer = 0 -- initialize if not already there
+                break
+            end
+        end
+    end
+end
+
 
 function sprite_manager.draw_hitboxes()
     for _, sprite in ipairs(sprite_manager.sprites) do
@@ -72,9 +111,8 @@ end
 
 function sprite_manager.can_spawn(x, y, name, below)
     local info = sprite_manager.sprite_info[name]
-    if info  then
-        
-        for i=1,#info.compatible do 
+    if info then
+        for i = 1, #info.compatible do 
             if below == info.compatible[i] then 
                 local chance = love.math.random()
                 if chance >= info.spawninterval1 and chance <= info.spawninterval2 then
@@ -83,13 +121,12 @@ function sprite_manager.can_spawn(x, y, name, below)
                 break
             end
         end
-        
         return false
     end
     return false
 end
 
-function sprite_manager.load_sprite(x, y, name)
+function sprite_manager.load_sprite(x, y, name, can_grab)
     local info = sprite_manager.sprite_info[name]
     if not info then return end
 
@@ -108,6 +145,7 @@ function sprite_manager.load_sprite(x, y, name)
         hitbox_x = info.hitboxX,
         hitbox_y = info.hitboxY,
         name = name,
+        can_grab = can_grab or false,
         image = image,
         returntype = info.returntype,
         scale_x = scale_x,
@@ -147,6 +185,13 @@ function sprite_manager.update(dt)
             sprite.hit_wobble_timer = sprite.hit_wobble_timer - dt
             sprite.wind_angle = sprite.wind_angle + math.sin(sprite.hit_wobble_timer * 40) * 0.1
         end
+
+        if sprite.hover_enabled then
+            sprite.hover_timer = (sprite.hover_timer or 0) + dt
+            sprite.offset_y_anim = math.sin(sprite.hover_timer * 2) * 2
+        else
+            sprite.offset_y_anim = 0
+        end
     end
 end
 
@@ -180,6 +225,7 @@ function sprite_manager.destroy(idval)
 end
 
 function sprite_manager.click(x, y)
+    local INVENTORY = require("player.inventory")
     for _, sprite in ipairs(sprite_manager.sprites) do
         local draw_x = sprite.x * TILE_SIZE + sprite.offset_x - 2
         local draw_y = sprite.y * TILE_SIZE + sprite.offset_y + sprite.offset_y_anim
@@ -195,12 +241,32 @@ function sprite_manager.click(x, y)
                 damage = INVENTORY.items[selected_item_id].dmg or 0
             end
 
+            local prevhp = sprite.hp
+
             sprite.hp = sprite.hp - damage
             sprite.hit_wobble_timer = 0.2
 
-            if sprite.hp <= 0 then
+            local info = sprite_manager.sprite_info[sprite.name]
+            local destroyed = false
+
+            if info.auto_pickup then
                 inventory:add(sprite.returntype)
                 sprite_manager.destroy(sprite.id)
+                destroyed = true
+            end
+
+            if not destroyed then
+                if info.droppable_while_hit and not (prevhp == sprite.hp) then
+                    local drop_chance = love.math.random()
+                    if drop_chance >= info.droppable_while_hit_interval1 and drop_chance <= info.droppable_while_hit_interval2 then
+                        inventory:add(info.droppable_while_hit)
+                    end
+                end
+
+                if sprite.hp <= 0 then
+                    inventory:add(sprite.returntype)
+                    sprite_manager.destroy(sprite.id)
+                end
             end
 
             break
