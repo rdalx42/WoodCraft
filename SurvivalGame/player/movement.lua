@@ -59,7 +59,7 @@ end
 function movement.set_tool(img)
 
     if not img then 
-        movement.tobj_sprite=love.graphics.newImage("assets/sprites/TRANSPARENT.png") -- placeholder for images which dont exists
+        movement.tobj_sprite=love.graphics.newImage("assets/sprites/TRANSPARENT.png") -- placeholder for images when we find an item without an image
     else
         movement.tobj_sprite=img 
     end
