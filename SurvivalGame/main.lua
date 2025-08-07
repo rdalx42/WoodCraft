@@ -45,7 +45,7 @@ end
 
 
 function love.load()
-    MOVEMENT.set_player({x = 500, y = 500}, 500)
+    
     cam = camera()
     SPRITE.wind_shader({"tree"})
     SPRITE.hover_shader({"leaf"})
@@ -57,10 +57,12 @@ function love.update(dt)
     MOVEMENT.get(dt)
     UI.update(dt)
     SPRITE.update(dt)
+    MOVEMENT.get_orientation(cam)
     inventory:update(dt)
     if particle_system then
         particle_system:update(dt)
     end
+    
 end
 
 function love.draw()
@@ -111,18 +113,19 @@ function love.draw()
 
     love.graphics.setColor(0, 1, 0)
     love.graphics.circle("fill", MOVEMENT.player_object.x, MOVEMENT.player_object.y, 15)
-
+    
     local x_pos = MOVEMENT.player_object.x - 150
     local y_pos = MOVEMENT.player_object.y - 100
     love.graphics.setColor(1, 1, 1)
-    local lines = inventory:print()
-    if lines then
-        for _, line in ipairs(lines) do
-            love.graphics.print(line, x_pos, y_pos)
-            y_pos = y_pos + 20
-        end
-    end
+    
+ 
+    local iw, ih = MOVEMENT.tobj_sprite:getDimensions()
+    local scale_x = 30 / iw
+    local scale_y = 30 / ih
 
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(MOVEMENT.tobj_sprite, MOVEMENT.tool_object.x-20, MOVEMENT.tool_object.y-20, 0, scale_x, scale_y)
+   
     SPRITE.draw_sprites()
     cam:detach()
 
