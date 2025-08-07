@@ -8,10 +8,11 @@ local inventory = {
     defaultsize = 30,
     inventory_arr = {},
     items = {
-        [0] = {name = "Fist", dmg = 2},
-        [10] = {name = "Small Rock", dmg = 1},
-        [11] = {name = "Wood", dmg = 1},
-        [12] = {name = "Leaf", dmg = 0},
+        [0] = {name = "Fist", dmg = 2,img=nil},
+        [10] = {name = "rock", dmg = 2,img=nil},
+        [11] = {name = "Wood", dmg = 2,img=nil},
+        [12] = {name = "Leaf", dmg = 0,img=nil},
+        
     },
     visible = false,
     toggleCooldown = 0.2,
@@ -20,7 +21,19 @@ local inventory = {
 
 inventory.__index = inventory
 
+local function get_img()
+    for id, item in pairs(inventory.items) do 
+        local success, img_or_err = pcall(love.graphics.newImage, "assets/sprites/" .. item.name .. ".png")
+        if success then 
+            inventory.items[id].img = img_or_err
+        else
+            print("Failed to load image for item:", item.name, img_or_err)
+        end
+    end
+end
+
 function inventory.new(slots, slot_size)
+    get_img()
     local self = setmetatable({}, inventory)
     self.maxslots = slots or inventory.maxdefaultslots
     self.slotsize = slot_size or inventory.defaultsize
@@ -28,7 +41,13 @@ function inventory.new(slots, slot_size)
     self.selected_item = 0
 
     for i = 1, self.maxslots do
-        self.data[i] = {id = -1, amount = 0, name = ""}
+        self.data[i] = {id = -1, amount = 0, name = "", dropname = ""}
+    end    
+    
+    for id,item in pairs(self.items) do 
+        if item.name then 
+            local path = "assets/"..string.lower(item.name)
+        end
     end
 
     self.uiFrame = UI.newFrame("InventoryFrame", 100, 100, 400, 300)
@@ -42,16 +61,19 @@ function inventory.swap(slotA, slotB)
     local temp = {
         id = slotA.id,
         amount = slotA.amount,
-        name = slotA.name
+        name = slotA.name,
+        dropname = slotA.dropname
     }
 
     slotA.id = slotB.id
     slotA.amount = slotB.amount
     slotA.name = slotB.name
+    slotA.dropname = slotB.dropname
 
     slotB.id = temp.id
     slotB.amount = temp.amount
     slotB.name = temp.name
+    slotB.dropname = temp.dropname
 end
 
 function inventory.get(index)
@@ -77,6 +99,7 @@ function inventory:add(itemid)
             slot.id = itemid
             slot.amount = 1
             slot.name = itemname
+            slot.dropname = itemname
             return true
         end
     end
@@ -93,6 +116,7 @@ function inventory:remove(itemid)
                 slot.id = -1
                 slot.amount = 0
                 slot.name = ""
+                slot.dropname = ""
             end
             return true
         end
@@ -109,6 +133,7 @@ function inventory:remove_at(index)
     if slot.amount <= 0 then
         slot.id = -1
         slot.name = ""
+        slot.dropname = ""
         slot.amount = 0
     end
 end
@@ -125,6 +150,7 @@ function inventory:print()
 end
 
 function inventory:update(dt)
+    
     self.toggleTimer = self.toggleTimer - dt
     if love.keyboard.isDown("tab") and self.toggleTimer <= 0 then
         self.visible = not self.visible
@@ -140,7 +166,59 @@ function inventory:update(dt)
     self.selected_item = 0
     if self.data[1].id ~= -1 then
         self.selected_item = self.data[1].id
+        if inventory.items[self.selected_item] and inventory.items[self.selected_item].img then 
+            MOVEMENT.set_tool(inventory.items[self.selected_item].img)
+        end
+    else 
+        MOVEMENT.set_tool(nil)    
     end
+
+    local playerX = MOVEMENT.player_object.x
+    local playerY = MOVEMENT.player_object.y
+    local playerW = MOVEMENT.player_object.w or 30
+    local playerH = MOVEMENT.player_object.h or 30
+
+    for i = 1, #SPRITE.sprites do
+        
+        local sprite = SPRITE.sprites[i]
+        local info = SPRITE.sprite_info[string.lower(sprite.name)]
+        if info and info.can_grab then
+           -- print("exists")
+            local hitboxX = sprite.x * TILE_SIZE + (TILE_SIZE - info.hitboxX) / 2
+            local hitboxY = sprite.y * TILE_SIZE + (TILE_SIZE * info.height_multiplier - info.hitboxY) / 2 + sprite.offset_y_anim
+            local hitboxW = info.hitboxX
+            local hitboxH = info.hitboxY
+
+            if SPRITE.aabb_collision(playerX, playerY, playerW, playerH, hitboxX, hitboxY, hitboxW, hitboxH) then
+                
+                
+                local item_name = string.lower(sprite.name)
+                local selected_item_id = nil
+
+                for id, item in pairs(inventory.items) do
+                    if string.lower(item.name) == item_name then
+                        selected_item_id = id
+                        break
+                    end
+                end
+
+                if selected_item_id then
+                    self:add(selected_item_id)
+                    SPRITE.destroy(sprite.id)
+
+                    if self.data[1].id ~= -1 then
+                        self.selected_item = self.data[1].id
+                        
+    
+                    end
+                    
+                    return 
+                end
+            end
+           
+        end
+    end
+
 end
 
 function inventory:draw()
@@ -152,6 +230,7 @@ function inventory:draw()
     local mx, my = love.mouse.getPosition()
 
     local hoveredSlot = nil
+    
 
     for i = 1, self.maxslots do
         local col = (i - 1) % cols
@@ -217,12 +296,12 @@ function inventory:rightmousepressed(x, y, button)
             local slot = self.data[i]
             if slot.id == -1 then return end
 
-            if HELPER.find(SPRITE.existing_sprites, slot.name) then
+            if HELPER.find(SPRITE.existing_sprites, slot.dropname) then
                 local playerX = MOVEMENT.player_object.x
                 local playerY = MOVEMENT.player_object.y
                 local tileX = math.floor(playerX / TILE_SIZE) + 1
                 local tileY = math.floor(playerY / TILE_SIZE) + 1
-                SPRITE.load_sprite(tileX, tileY, slot.name, true)
+                SPRITE.load_sprite(tileX + love.math.random(0, 1.5), tileY + love.math.random(0, 1.5), slot.dropname, true)
             end
 
             self:remove_at(i)
