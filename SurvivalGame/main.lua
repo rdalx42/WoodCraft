@@ -7,9 +7,12 @@ local SPRITE = require("map.sprite_manager")
 local UI = require("libraries.UI")
 local WEATHER = require("map.weather")
 
+local generatorW = 100
+local generatorH = 100
+
 TILE_SIZE = 32
 inventory = INVENTORY.new(30, 30)
-local map = MAP_INFO.generate(200, 200, love.math.random(10, 1000))
+local map = MAP_INFO.generate(generatorW, generatorH, love.math.random(10, 1000))
 cam = nil
 
 local particle_system = nil
@@ -65,21 +68,37 @@ function love.update(dt)
     
 end
 
+local function get_valid_distance(x,dist)
+    if x - dist <= 0 then 
+        return 1
+    end
+
+    return x - dist 
+end
+
+local function get_draw_dist(it,distance_meter)
+    if math.floor(it - distance_meter) <= 0 then return 1 end 
+    return math.floor((it-distance_meter))
+end
+
 function love.draw()
     cam:attach()
-
+   
+    print("FPS : " .. tostring(love.timer.getFPS()))
     local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
     local cam_x, cam_y = cam.x, cam.y
+    local s = 0
 
-    local start_x = math.max(1, math.floor((cam_x - screen_w / 2) / TILE_SIZE))
-    local end_x = math.min(#map[1], math.ceil((cam_x + screen_w / 2) / TILE_SIZE))
+   -- print(cam_x/TILE_SIZE .. " " .. cam_y/TILE_SIZE)
+    --print("next " .. (cam_x-10)/TILE_SIZE ..  " " .. (cam_y-10)/TILE_SIZE)
+    --print(cam_x/TILE_SIZE .. " " .. cam_y/TILE_SIZE)
+    for y = get_draw_dist(cam_y/TILE_SIZE,20), cam_y/TILE_SIZE+20 do
+        for x = get_draw_dist(cam_x/TILE_SIZE,20), cam_x/TILE_SIZE+20 do
+            
+            if x > generatorW or y > generatorH then goto next_it end
 
-    local start_y = math.max(1, math.floor((cam_y - screen_h / 2) / TILE_SIZE))
-    local end_y = math.min(#map, math.ceil((cam_y + screen_h / 2) / TILE_SIZE))
-
-    for y = start_y, end_y do
-        for x = start_x, end_x do
             local tile_id = map[y][x]
+   
             local tile_info = TILES[tile_id]
             local offset_x, offset_y = 0, 0
             if tile_id == 10 or tile_id == 11 then
@@ -108,8 +127,11 @@ function love.draw()
                 love.graphics.setColor(1, 0, 1)
                 love.graphics.rectangle("fill", (x - 1) * TILE_SIZE + offset_x, (y - 1) * TILE_SIZE + offset_y, TILE_SIZE, TILE_SIZE)
             end
+
+            ::next_it::
         end
     end
+
 
     love.graphics.setColor(0, 1, 0)
     love.graphics.circle("fill", MOVEMENT.player_object.x, MOVEMENT.player_object.y, 15)
@@ -117,16 +139,16 @@ function love.draw()
     local x_pos = MOVEMENT.player_object.x - 150
     local y_pos = MOVEMENT.player_object.y - 100
     love.graphics.setColor(1, 1, 1)
-    
- 
+
+    SPRITE.draw_sprites()
+
     local iw, ih = MOVEMENT.tobj_sprite:getDimensions()
     local scale_x = 30 / iw
     local scale_y = 30 / ih
 
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(MOVEMENT.tobj_sprite, MOVEMENT.tool_object.x-20, MOVEMENT.tool_object.y-20, 0, scale_x, scale_y)
-   
-    SPRITE.draw_sprites()
+
     cam:detach()
 
     UI.draw()
@@ -136,6 +158,7 @@ function love.draw()
         local sw = love.graphics.getWidth()
         love.graphics.draw(particle_system, sw / 2, 0)
     end
+
 end
 
 
