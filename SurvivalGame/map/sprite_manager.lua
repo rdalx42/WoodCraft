@@ -29,12 +29,13 @@ local sprite_manager = {
             droppable_while_hit_interval1 = 0,
             droppable_while_hit_interval2 = 0.1,
             hover_enabled=false,
+            
         },
         ["leaf"] = {
             hp = 0,
             returntype = 12,
             hitboxX = 30,
-            hitboxY = 39,
+            hitboxY = 30,
             spawninterval1 = 0.0,
             spawninterval2 = 0.0,
             compatible = {1,3,9,11},
@@ -43,12 +44,44 @@ local sprite_manager = {
             droppable_while_hit = 0,
             droppable_while_hit_interval1 = 0,
             droppable_while_hit_interval2 = 0.1,
-            auto_pickup = true,
             hover_enabled=true,
+            
         },
+        ["wood"] = {
+            hp = 0,
+            returntype = 11,
+            hitboxX = 30,
+            hitboxY = 30,
+            spawninterval1 = 0.0,
+            spawninterval2 = 0.0,
+            compatible = {1,3,9,11},
+            height_multiplier = 1,
+            can_grab = true,
+            droppable_while_hit = 0,
+            droppable_while_hit_interval1 = 0,
+            droppable_while_hit_interval2 = 0.1,
+            hover_enabled=true,
+            
+        },
+
+        ["rock"] = {
+            hp = 0,
+            returntype = 10,
+            hitboxX = 30,
+            hitboxY = 30,
+            spawninterval1 = 0.0,
+            spawninterval2 = 0.0,
+            compatible = {1,3,9,11},
+            height_multiplier = 1,
+            can_grab = true,
+            droppable_while_hit = 0,
+            droppable_while_hit_interval1 = 0,
+            droppable_while_hit_interval2 = 0.1,
+            hover_enabled=true,
+        }
     },
     
-    existing_sprites = { "smallrock", "tree", "leaf"},
+    existing_sprites = { "rock","smallrock", "tree", "leaf","wood"},
     sprites = {},
     animation_time = 0.15
 }
@@ -89,7 +122,7 @@ function sprite_manager.draw_hitboxes()
     end
 end
 
-local function aabb_collision(x1, y1, w1, h1, x2, y2, w2, h2)
+function sprite_manager.aabb_collision(x1, y1, w1, h1, x2, y2, w2, h2)
     return x1 < x2 + w2 and
            x2 < x1 + w1 and
            y1 < y2 + h2 and
@@ -102,12 +135,13 @@ function sprite_manager.check_player_collision(newX, newY, playerWidth, playerHe
         local info = sprite_manager.sprite_info[sprite.name]
         local hitbox_x = sprite.x * TILE_SIZE + (TILE_SIZE - sprite.hitbox_x) / 2
         local hitbox_y = sprite.y * TILE_SIZE + (TILE_SIZE * info.height_multiplier - sprite.hitbox_y) / 2 + sprite.offset_y_anim
-        if aabb_collision(newX, newY, playerWidth, playerHeight, hitbox_x, hitbox_y, sprite.hitbox_x, sprite.hitbox_y) then
+        if sprite_manager.aabb_collision(newX, newY, playerWidth, playerHeight, hitbox_x, hitbox_y, sprite.hitbox_x, sprite.hitbox_y) then
             return true
         end
     end
     return false
 end
+
 
 function sprite_manager.can_spawn(x, y, name, below)
     local info = sprite_manager.sprite_info[name]
@@ -237,8 +271,12 @@ function sprite_manager.click(x, y)
         if x >= hitbox_left and x <= hitbox_right and y >= hitbox_top and y <= hitbox_bottom then
             local selected_item_id = inventory.selected_item
             local damage = 0
+
+            print(selected_item_id)
             if INVENTORY.items[selected_item_id] then
+                -- here's the bug with the rock.
                 damage = INVENTORY.items[selected_item_id].dmg or 0
+                print("found")
             end
 
             local prevhp = sprite.hp
@@ -248,12 +286,6 @@ function sprite_manager.click(x, y)
 
             local info = sprite_manager.sprite_info[sprite.name]
             local destroyed = false
-
-            if info.auto_pickup then
-                inventory:add(sprite.returntype)
-                sprite_manager.destroy(sprite.id)
-                destroyed = true
-            end
 
             if not destroyed then
                 if info.droppable_while_hit and not (prevhp == sprite.hp) then
