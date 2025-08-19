@@ -6,13 +6,9 @@ local generator = {
 }
 
 local tile = require("data.tiles")
-local INVENTORY = require("player.inventory")
 local SPRITE = require("map.sprite_manager")
 
 local scale = 0.005
-local SHAKE_DURATION = 0.3
-local SHAKE_MAGNITUDE = 3
-
 
 local function key(x, y)
     return y .. "," .. x
@@ -20,7 +16,6 @@ end
 
 function generator.generate(width, height, seed)
     seed = seed or 0
-
     local x_offset = (seed % 10000) * 100
     local y_offset = (math.floor(seed / 10000) % 10000) * 100
 
@@ -29,19 +24,26 @@ function generator.generate(width, height, seed)
     generator.shake_timers = {}
     generator.shake_offsets = {}
 
+    local noise = love.math.noise
+    local selection = tile.selection
+    local sprites = SPRITE.existing_sprites
+    local load_sprite = SPRITE.load_sprite
+
     for y = 1, height do
-        map[y] = {}
+        local row = {}
+        map[y] = row
         for x = 1, width do
-            local n = love.math.noise((x + x_offset) * scale, (y + y_offset) * scale) + 0.1
-            local selected_tile = tile.selection(n)
-            map[y][x] = selected_tile
             
-            for i=1,#SPRITE.existing_sprites do 
-                if SPRITE.can_spawn(x,y,tostring(SPRITE.existing_sprites[i]),selected_tile) == true then 
-                    SPRITE.load_sprite(x,y,SPRITE.existing_sprites[i])
-                    break
-                end
-            end
+            local n = noise((x + x_offset) * scale, (y + y_offset) * scale) + 0.1
+            local selected_tile = selection(n)
+            row[x] = selected_tile
+            local possible_sprites = sprites
+            
+            local selected_sprite = math.random(1,#possible_sprites)
+            local spr = possible_sprites[selected_sprite]
+            
+            if(SPRITE.can_spawn(x,y,spr,selected_tile))then load_sprite(x,y,spr,selected_sprite)end
+
         end
     end
 
@@ -53,6 +55,5 @@ function generator.getShakeOffset(x, y)
     local k = key(x, y)
     return generator.shake_offsets[k] or {x = 0, y = 0}
 end
-
 
 return generator
