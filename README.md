@@ -1,5 +1,5 @@
 # survivalGameLove2D
-
+Made with the love2d lua framwork
 a WIP survival game.
 
 all the art will be replaced.
