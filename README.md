@@ -1,4 +1,4 @@
-# survivalGameLove2D
+# WoodCraft
 Made with the love2d lua framwork
 a WIP survival game.
 
