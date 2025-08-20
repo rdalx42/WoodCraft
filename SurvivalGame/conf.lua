@@ -5,4 +5,5 @@ function love.conf(t)
     t.window.height=800
     t.window.width=800
     t.console=true
+    t.window.icon = "assets/icons/woodcraftlogo.png"
 end 
