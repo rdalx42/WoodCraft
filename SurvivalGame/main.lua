@@ -7,36 +7,29 @@ local SPRITE = require("map.sprite_manager")
 local UI = require("libraries.UI")
 local WEATHER = require("map.weather")
 
-local generatorW = 100
-local generatorH = 100
-
 TILE_SIZE = 32
 inventory = INVENTORY.new(30, 30)
-local map = MAP_INFO.generate(generatorW, generatorH, love.math.random(10, 1000))
+local map = MAP_INFO.generate(TILES.generatorW, TILES.generatorH, 10)
 cam = nil
-
+local CHUNK_OFFSET = 40
+local can_mine = false
 local particle_system = nil
 
 function setup_particle(data)
     if data.particle_img ~= "" then
         local img = love.graphics.newImage(data.particle_img)
         if not particle_system or particle_system:getTexture() ~= img then
-            
             local min_angle = data.angle_min or 0
             local max_angle = data.angle_max or 0
-            
             local direction = math.rad((min_angle + max_angle) / 2)
             local spread = math.rad(math.abs(max_angle - min_angle) / 2)
-            
             particle_system = love.graphics.newParticleSystem(img, 1000)
             particle_system:setEmitterLifetime(-1)
             particle_system:setParticleLifetime(5, 10)
             particle_system:setSizeVariation(1)
             particle_system:setSizes(1.5, 2.5)
-            
             particle_system:setDirection(direction)  
             particle_system:setSpread(spread)       
-            
             particle_system:setLinearAcceleration(-20, 200, 20, 400)
             particle_system:setColors(1, 1, 1, 1, 1, 1, 1, 0)
             particle_system:setEmissionArea("uniform", love.graphics.getWidth(), 0)
@@ -46,12 +39,19 @@ function setup_particle(data)
     end
 end
 
-
 function love.load()
-    
     cam = camera()
     SPRITE.wind_shader({"tree"})
     SPRITE.hover_shader({"leaf"})
+    love.window.setIcon(love.image.newImageData("assets/icons/woodcraftlogo.png"))
+
+    
+    for i=1,#TILES.tile_indices do 
+        local tile = TILES[TILES.tile_indices[i]]
+        if tile.image_path then 
+            tile.image = love.graphics.newImage(tile.image_path)
+        end        
+    end
 end
 
 function love.update(dt)
@@ -65,55 +65,43 @@ function love.update(dt)
     if particle_system then
         particle_system:update(dt)
     end
-    
 end
 
-local function get_valid_distance(x,dist)
-    if x - dist <= 0 then 
-        return 1
-    end
-
-    return x - dist 
-end
-
-local function get_draw_dist(it,distance_meter)
+local function get_draw_dist(it, distance_meter)
     if math.floor(it - distance_meter) <= 0 then return 1 end 
-    return math.floor((it-distance_meter))
+    return math.floor(it - distance_meter)
 end
 
 function love.draw()
     cam:attach()
-   
-    print("FPS : " .. tostring(love.timer.getFPS()))
-    local screen_w, screen_h = love.graphics.getWidth(), love.graphics.getHeight()
-    local cam_x, cam_y = cam.x, cam.y
-    local s = 0
 
-   -- print(cam_x/TILE_SIZE .. " " .. cam_y/TILE_SIZE)
-    --print("next " .. (cam_x-10)/TILE_SIZE ..  " " .. (cam_y-10)/TILE_SIZE)
-    --print(cam_x/TILE_SIZE .. " " .. cam_y/TILE_SIZE)
-    for y = get_draw_dist(cam_y/TILE_SIZE,20), cam_y/TILE_SIZE+20 do
-        for x = get_draw_dist(cam_x/TILE_SIZE,20), cam_x/TILE_SIZE+20 do
-            
-            if x > generatorW or y > generatorH then goto next_it end
+    print("FPS : " .. tostring(love.timer.getFPS()))
+    local cam_x, cam_y = cam.x, cam.y
+
+    local start_y = get_draw_dist(cam_y / TILE_SIZE, CHUNK_OFFSET)
+    local end_y = cam_y / TILE_SIZE + CHUNK_OFFSET
+    local start_x = get_draw_dist(cam_x / TILE_SIZE, CHUNK_OFFSET)
+    local end_x = cam_x / TILE_SIZE + CHUNK_OFFSET
+
+    for y = start_y, end_y do
+        for x = start_x, end_x do
+            if x > TILES.generatorW or y > TILES.generatorH then goto next_tile end
 
             local tile_id = map[y][x]
-   
             local tile_info = TILES[tile_id]
             local offset_x, offset_y = 0, 0
+
             if tile_id == 10 or tile_id == 11 then
                 local offset = MAP_INFO.getShakeOffset(x, y)
                 offset_x = offset.x or 0
                 offset_y = offset.y or 0
             end
-            
+
             if tile_info then
                 if tile_info.image then
                     local baseScale = TILE_SIZE / tile_info.image:getWidth()
                     local scale = baseScale
-                    if tile_id == 1 then
-                        scale = baseScale * 1.5
-                    end
+                    if tile_id == 1 then scale = baseScale * 1.5 end
                     love.graphics.setColor(1, 1, 1)
                     love.graphics.draw(tile_info.image, (x - 1) * TILE_SIZE + offset_x, (y - 1) * TILE_SIZE + offset_y, 0, scale, scale)
                 elseif tile_info.color then
@@ -128,29 +116,43 @@ function love.draw()
                 love.graphics.rectangle("fill", (x - 1) * TILE_SIZE + offset_x, (y - 1) * TILE_SIZE + offset_y, TILE_SIZE, TILE_SIZE)
             end
 
-            ::next_it::
+            ::next_tile::
         end
     end
 
+    local mouse_x, mouse_y = love.mouse.getPosition()
+    local world_x, world_y = cam:worldCoords(mouse_x, mouse_y)
+    local tile_hover_x = math.floor(world_x / TILE_SIZE) + 1
+    local tile_hover_y = math.floor(world_y / TILE_SIZE) + 1
+
+    if tile_hover_x >= 1 and tile_hover_x <= TILES.generatorW and tile_hover_y >= 1 and tile_hover_y <= TILES.generatorH then
+        local player_tile_x = math.floor(MOVEMENT.player_object.x / TILE_SIZE) + 1
+        local player_tile_y = math.floor(MOVEMENT.player_object.y / TILE_SIZE) + 1
+        local dx = tile_hover_x - player_tile_x
+        local dy = tile_hover_y - player_tile_y
+        local distance = math.sqrt(dx*dx + dy*dy)
+        if distance <= 3 then
+            love.graphics.setColor(0, 0, 0, 1)
+            love.graphics.rectangle("line", (tile_hover_x - 1) * TILE_SIZE, (tile_hover_y - 1) * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            love.graphics.setLineWidth(1.5)
+            can_mine = true
+        else
+            can_mine = false
+        end
+    end
 
     love.graphics.setColor(0, 1, 0)
     love.graphics.circle("fill", MOVEMENT.player_object.x, MOVEMENT.player_object.y, 15)
-    
-    local x_pos = MOVEMENT.player_object.x - 150
-    local y_pos = MOVEMENT.player_object.y - 100
-    love.graphics.setColor(1, 1, 1)
-
-    SPRITE.draw_sprites()
 
     local iw, ih = MOVEMENT.tobj_sprite:getDimensions()
-    local scale_x = 30 / iw
-    local scale_y = 30 / ih
+    local scale_x = 20 / iw
+    local scale_y = 20 / ih
 
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(MOVEMENT.tobj_sprite, MOVEMENT.tool_object.x-20, MOVEMENT.tool_object.y-20, 0, scale_x, scale_y)
+    love.graphics.draw(MOVEMENT.tobj_sprite, MOVEMENT.tool_object.x - 20, MOVEMENT.tool_object.y - 20, 0, scale_x, scale_y)
 
+    SPRITE.draw_sprites()
     cam:detach()
-
     UI.draw()
     inventory:draw()
 
@@ -158,14 +160,14 @@ function love.draw()
         local sw = love.graphics.getWidth()
         love.graphics.draw(particle_system, sw / 2, 0)
     end
-
 end
-
 
 function love.mousepressed(x, y, button)
     if button == 1 then
         local world_x, world_y = cam:worldCoords(x, y)
-        SPRITE.click(world_x, world_y)
+        if can_mine then
+            SPRITE.click(world_x, world_y)
+        end
         inventory:mousepressed(x, y, button)
     elseif button == 2 then
         inventory:rightmousepressed(x, y, button)
